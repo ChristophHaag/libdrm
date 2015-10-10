@@ -314,3 +314,48 @@ int amdgpu_query_gds_info(amdgpu_device_handle dev,
 
 	return 0;
 }
+
+static int amdgpu_query_virtual_range_info(amdgpu_device_handle dev,
+			uint32_t aperture,
+			uint64_t *start,
+			uint64_t *end)
+{
+	struct drm_amdgpu_virtual_range range_info;
+	struct drm_amdgpu_info request;
+	int r;
+
+	memset(&range_info, 0, sizeof(range_info));
+	request.return_pointer = (uintptr_t)&range_info;
+	request.return_size = sizeof(range_info);
+	request.query = AMDGPU_INFO_VIRTUAL_RANGE;
+	request.virtual_range.aperture = aperture;
+
+	r = drmCommandWrite(dev->fd, DRM_AMDGPU_INFO, &request,
+                            +			    sizeof(struct drm_amdgpu_info));
+	if (r)
+		return r;
+
+	*start = range_info.start;
+	*end = range_info.end;
+	return 0;
+}
+
+int amdgpu_query_private_aperture(amdgpu_device_handle dev,
+			uint64_t *start,
+			uint64_t *end)
+{
+	return amdgpu_query_virtual_range_info(dev,
+			AMDGPU_SUA_APERTURE_PRIVATE,
+			start,
+			end);
+}
+
+int amdgpu_query_shared_aperture(amdgpu_device_handle dev,
+			uint64_t *start,
+			uint64_t *end)
+{
+	return amdgpu_query_virtual_range_info(dev,
+			AMDGPU_SUA_APERTURE_SHARED,
+			start,
+			end);
+}

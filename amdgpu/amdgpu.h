@@ -1081,6 +1081,36 @@ int amdgpu_query_gds_info(amdgpu_device_handle dev,
 			struct amdgpu_gds_resource_info *gds_info);
 
 /**
+* Query private aperture range
+*
+* \param dev    - [in] Device handle. See #amdgpu_device_initialize()
+* \param start - \c [out] Start of private aperture
+* \param end    - \c [out] End of private aperture
+*
+* \return  0 on success\n
+*         <0 - Negative POSIX Error code
+*
+*/
+int amdgpu_query_private_aperture(amdgpu_device_handle dev,
+			uint64_t *start,
+			uint64_t *end);
+
+/**
+* Query shared aperture range
+*
+* \param dev    - [in] Device handle. See #amdgpu_device_initialize()
+* \param start - \c [out] Start of shared aperture
+* \param end    - \c [out] End of shared aperture
+*
+* \return 0 on success\n
+*    <0 - Negative POSIX Error code
+*
+*/
+int amdgpu_query_shared_aperture(amdgpu_device_handle dev,
+			uint64_t *start,
+			uint64_t *end);
+
+/**
  * Read a set of consecutive memory-mapped registers.
  * Not all registers are allowed to be read by userspace.
  *
