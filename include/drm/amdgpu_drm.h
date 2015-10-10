@@ -510,6 +510,8 @@ struct drm_amdgpu_cs_chunk_data {
 #define AMDGPU_INFO_DEV_INFO			0x16
 /* visible vram usage */
 #define AMDGPU_INFO_VIS_VRAM_USAGE		0x17
+/* virtual range */
+#define AMDGPU_INFO_VIRTUAL_RANGE		0x18
 
 #define AMDGPU_INFO_MMR_SE_INDEX_SHIFT	0
 #define AMDGPU_INFO_MMR_SE_INDEX_MASK	0xff
@@ -568,6 +570,11 @@ struct drm_amdgpu_info {
 		} read_mmr_reg;
 
 		struct drm_amdgpu_query_fw query_fw;
+
+		struct {
+			uint32_t aperture;
+			uint32_t _pad;
+		} virtual_range;
 	};
 };
 
@@ -676,6 +683,15 @@ struct drm_amdgpu_info_hw_ip {
 #define AMDGPU_FAMILY_KV			125 /* Kaveri, Kabini, Mullins */
 #define AMDGPU_FAMILY_VI			130 /* Iceland, Tonga */
 #define AMDGPU_FAMILY_CZ			135 /* Carrizo, Stoney */
+/**
+ *  Definition of System Unified Address (SUA) apertures
+ */
+#define AMDGPU_SUA_APERTURE_PRIVATE	1
+#define AMDGPU_SUA_APERTURE_SHARED	2
+struct drm_amdgpu_virtual_range {
+	uint64_t start;
+	uint64_t end;
+};
 
 #if defined(__cplusplus)
 }
