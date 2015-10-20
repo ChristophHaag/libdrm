@@ -55,6 +55,7 @@ struct amdgpu_bo_va_hole {
 struct amdgpu_bo_va_mgr {
 	/* the start virtual address */
 	uint64_t va_offset;
+	uint64_t va_min;
 	uint64_t va_max;
 	struct list_head va_holes;
 	pthread_mutex_t bo_va_mutex;
@@ -88,6 +89,8 @@ struct amdgpu_device {
 	struct amdgpu_bo_va_mgr vamgr;
 	/** The VA manager for the 32bit address space */
 	struct amdgpu_bo_va_mgr vamgr_32;
+	/** The VA manager for SVM address space */
+	struct amdgpu_bo_va_mgr *vamgr_svm;
 };
 
 struct amdgpu_bo {
@@ -148,6 +151,9 @@ amdgpu_vamgr_find_va(struct amdgpu_bo_va_mgr *mgr, uint64_t size,
 
 drm_private void
 amdgpu_vamgr_free_va(struct amdgpu_bo_va_mgr *mgr, uint64_t va, uint64_t size);
+
+int amdgpu_svm_vamgr_init(struct amdgpu_device *dev);
+void amdgpu_svm_vamgr_deinit(struct amdgpu_device *dev);
 
 drm_private int amdgpu_query_gpu_info_init(amdgpu_device_handle dev);
 
