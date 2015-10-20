@@ -49,6 +49,7 @@ static void amdgpu_command_submission_sdma(void);
 static void amdgpu_command_submission_multi_fence(void);
 static void amdgpu_userptr_test(void);
 static void amdgpu_semaphore_test(void);
+static void amdgpu_svm_test(void);
 
 static void amdgpu_command_submission_write_linear_helper(unsigned ip_type);
 static void amdgpu_command_submission_const_fill_helper(unsigned ip_type);
@@ -63,9 +64,11 @@ CU_TestInfo basic_tests[] = {
 	{ "Command submission Test (SDMA)", amdgpu_command_submission_sdma },
 	{ "Command submission Test (Multi-fence)", amdgpu_command_submission_multi_fence },
 	{ "SW semaphore Test",  amdgpu_semaphore_test },
+	{ "SVM Test", amdgpu_svm_test },
 	CU_TEST_INFO_NULL,
 };
 #define BUFFER_SIZE (8 * 1024)
+#define SVM_TEST_COUNT 16
 #define SDMA_PKT_HEADER_op_offset 0
 #define SDMA_PKT_HEADER_op_mask   0x000000FF
 #define SDMA_PKT_HEADER_op_shift  0
@@ -1307,4 +1310,47 @@ static void amdgpu_userptr_test(void)
 
 	r = amdgpu_cs_ctx_free(context_handle);
 	CU_ASSERT_EQUAL(r, 0);
+}
+
+static void amdgpu_svm_test(void)
+{
+	int r;
+	uint64_t svm_mc;
+	amdgpu_va_handle va_handle[SVM_TEST_COUNT];
+	void *cpu;
+	uint64_t start;
+	uint64_t end;
+	int i;
+
+	r = amdgpu_va_range_query(device_handle,
+		amdgpu_gpu_va_range_svm, &start, &end);
+	CU_ASSERT_EQUAL(r, 0);
+
+	/* If there is no SVM range, exit this function.*/
+	if (start == 0ULL && end == 0ULL)
+		return;
+
+	CU_ASSERT(start < end);
+	CU_ASSERT(end - start >= 1ULL * 1024ULL * 1024ULL * 1024ULL);
+
+	for (i = 0; i < SVM_TEST_COUNT; i++) {
+		r = amdgpu_va_range_alloc(device_handle,
+					  amdgpu_gpu_va_range_svm,
+					  64 * 1024 * 1024, 1, 0, &svm_mc,
+					  &va_handle[i], 0);
+		CU_ASSERT_EQUAL(r, 0);
+
+		r = amdgpu_svm_commit(va_handle[i], &cpu);
+		CU_ASSERT_EQUAL(r, 0);
+		CU_ASSERT_PTR_NOT_NULL(cpu);
+		CU_ASSERT_EQUAL(svm_mc, (uint64_t)cpu);
+	}
+
+	for (i = 0; i < SVM_TEST_COUNT; i++) {
+		r = amdgpu_svm_uncommit(va_handle[i]);
+		CU_ASSERT_EQUAL(r, 0);
+
+		r = amdgpu_va_range_free(va_handle[i]);
+		CU_ASSERT_EQUAL(r, 0);
+	}
 }
