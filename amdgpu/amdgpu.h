@@ -87,7 +87,9 @@ enum amdgpu_bo_handle_type {
 enum amdgpu_gpu_va_range
 {
 	/** Allocate from "normal"/general range */
-	amdgpu_gpu_va_range_general = 0
+	amdgpu_gpu_va_range_general = 0,
+	/** Allocate from svm range */
+	amdgpu_gpu_va_range_svm = 1
 };
 
 /*--------------------------------------------------------------------------*/
@@ -1236,6 +1238,30 @@ int amdgpu_bo_va_op(amdgpu_bo_handle bo,
 		    uint64_t addr,
 		    uint64_t flags,
 		    uint32_t ops);
+
+/**
+ *  Commit SVM allocation in a process
+ *
+ * \param va_range_handle - \c [in] Handle of SVM allocation
+ * \param cpu - \c [out] CPU pointer. The value is equal to GPU VM address.
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_svm_commit(amdgpu_va_handle va_range_handle,
+			void **cpu);
+
+/**
+ *  Uncommit SVM alloation in process's CPU_VM
+ *
+ * \param va_range_handle - \c [in] Handle of SVM allocation
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_svm_uncommit(amdgpu_va_handle va_range_handle);
 
 /**
  *  create semaphore
