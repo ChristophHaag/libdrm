@@ -60,6 +60,10 @@ struct amdgpu_bo_va_mgr {
 	struct list_head va_holes;
 	pthread_mutex_t bo_va_mutex;
 	uint32_t va_alignment;
+	/* reference count. It is used by SVM for mulit GPU.*/
+	atomic_t refcount;
+	/* Is the VM manager valid. It is used by SVM for mulit GPU.*/
+	bool valid;
 };
 
 struct amdgpu_va {
@@ -89,8 +93,6 @@ struct amdgpu_device {
 	struct amdgpu_bo_va_mgr vamgr;
 	/** The VA manager for the 32bit address space */
 	struct amdgpu_bo_va_mgr vamgr_32;
-	/** The VA manager for SVM address space */
-	struct amdgpu_bo_va_mgr *vamgr_svm;
 };
 
 struct amdgpu_bo {
