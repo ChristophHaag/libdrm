@@ -133,8 +133,7 @@ static void amdgpu_device_free_internal(amdgpu_device_handle dev)
 {
 	amdgpu_svm_vamgr_deinit(dev);
 	amdgpu_vamgr_deinit(&dev->vamgr_32);
-	amdgpu_vamgr_deinit(dev->vamgr);
-	free(dev->vamgr);
+	amdgpu_vamgr_deinit(&dev->vamgr);
 	util_hash_table_destroy(dev->bo_flink_names);
 	util_hash_table_destroy(dev->bo_handles);
 	pthread_mutex_destroy(&dev->bo_table_mutex);
@@ -255,16 +254,12 @@ int amdgpu_device_initialize(int fd,
 	if (r)
 		goto cleanup;
 
-	dev->vamgr = calloc(1, sizeof(struct amdgpu_bo_va_mgr));
-	if (dev->vamgr == NULL)
-		goto cleanup;
-
-	amdgpu_vamgr_init(dev->vamgr, dev->dev_info.virtual_address_offset,
+	amdgpu_vamgr_init(&dev->vamgr, dev->dev_info.virtual_address_offset,
 			  dev->dev_info.virtual_address_max,
 			  dev->dev_info.virtual_address_alignment);
 
 	max = MIN2(dev->dev_info.virtual_address_max, 0xffffffff);
-	start = amdgpu_vamgr_find_va(dev->vamgr,
+	start = amdgpu_vamgr_find_va(&dev->vamgr,
 				     max - dev->dev_info.virtual_address_offset,
 				     dev->dev_info.virtual_address_alignment, 0);
 	if (start > 0xffffffff)
@@ -285,10 +280,9 @@ int amdgpu_device_initialize(int fd,
 
 free_va:
 	r = -ENOMEM;
-	amdgpu_vamgr_free_va(dev->vamgr, start,
+	amdgpu_vamgr_free_va(&dev->vamgr, start,
 			     max - dev->dev_info.virtual_address_offset);
-	amdgpu_vamgr_deinit(dev->vamgr);
-	free(dev->vamgr);
+	amdgpu_vamgr_deinit(&dev->vamgr);
 
 cleanup:
 	if (dev->fd >= 0)

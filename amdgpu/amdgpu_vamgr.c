@@ -258,7 +258,7 @@ int amdgpu_va_range_alloc(amdgpu_device_handle dev,
 	else if (flags & AMDGPU_VA_RANGE_32_BIT)
 		vamgr = &dev->vamgr_32;
 	else
-		vamgr = dev->vamgr;
+		vamgr = &dev->vamgr;
 
 	va_base_alignment = MAX2(va_base_alignment, vamgr->va_alignment);
 	size = ALIGN(size, vamgr->va_alignment);
@@ -337,7 +337,7 @@ int amdgpu_svm_vamgr_init(struct amdgpu_device *dev)
 		if (!vamgr_svm.valid)
 			return -ENOSPC;
 
-		start = amdgpu_vamgr_find_va(dev->vamgr,
+		start = amdgpu_vamgr_find_va(&dev->vamgr,
 			vamgr_svm.va_max - vamgr_svm.va_min,
 			dev->dev_info.virtual_address_alignment, vamgr_svm.va_min);
 
@@ -367,7 +367,7 @@ int amdgpu_svm_vamgr_init(struct amdgpu_device *dev)
 	 */
 	for (base_required = end - size; base_required >= min_base_required;
 		base_required -= step) {
-		start = amdgpu_vamgr_find_va(dev->vamgr, size,
+		start = amdgpu_vamgr_find_va(&dev->vamgr, size,
 						dev->dev_info.virtual_address_alignment, base_required);
 		if (start != base_required)
 			continue;
@@ -384,12 +384,12 @@ int amdgpu_svm_vamgr_init(struct amdgpu_device *dev)
 			/* Probably there is no space in this process's address space for
 			   such size of SVM range. This is very rare for 64 bit CPU.
 			*/
-			amdgpu_vamgr_free_va(dev->vamgr, start, size);
+			amdgpu_vamgr_free_va(&dev->vamgr, start, size);
 			ret = -ENOMEM;
 			break;
 		} else { /* cpu_address != (void *)start */
 			/* This CPU VM address (start) is not available*/
-			amdgpu_vamgr_free_va(dev->vamgr, start, size);
+			amdgpu_vamgr_free_va(&dev->vamgr, start, size);
 			munmap(cpu_address, size);
 			base_required -= step;
 		}
