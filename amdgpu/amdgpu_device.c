@@ -132,10 +132,10 @@ static int amdgpu_get_auth(int fd, int *auth)
 static void amdgpu_device_free_internal(amdgpu_device_handle dev)
 {
 	amdgpu_svm_vamgr_deinit(dev);
-	amdgpu_vamgr_deinit(dev->vamgr);
-	free(dev->vamgr);
 	amdgpu_vamgr_deinit(dev->vamgr_32);
 	free(dev->vamgr_32);
+	amdgpu_vamgr_deinit(dev->vamgr);
+	free(dev->vamgr);
 	util_hash_table_destroy(dev->bo_flink_names);
 	util_hash_table_destroy(dev->bo_handles);
 	pthread_mutex_destroy(&dev->bo_table_mutex);
