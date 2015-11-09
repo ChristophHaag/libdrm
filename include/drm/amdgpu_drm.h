@@ -81,6 +81,8 @@ extern "C" {
 #define AMDGPU_GEM_CREATE_CPU_GTT_USWC		(1 << 2)
 /* Flag that the memory should be in VRAM and cleared */
 #define AMDGPU_GEM_CREATE_VRAM_CLEARED		(1 << 3)
+/* Flag that the memory allocation should be pinned */
+#define AMDGPU_GEM_CREATE_NO_EVICT              (1 << 3)
 
 struct drm_amdgpu_gem_create_in  {
 	/** the requested memory size */
