@@ -268,8 +268,6 @@ int amdgpu_device_initialize(int fd,
 	amdgpu_vamgr_init(&dev->vamgr_32, start, max,
 			  dev->dev_info.virtual_address_alignment);
 
-	amdgpu_svm_vamgr_init(dev);
-
 	*major_version = dev->major_version;
 	*minor_version = dev->minor_version;
 	*device_handle = dev;
