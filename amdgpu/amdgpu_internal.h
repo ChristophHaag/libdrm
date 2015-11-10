@@ -154,9 +154,6 @@ amdgpu_vamgr_find_va(struct amdgpu_bo_va_mgr *mgr, uint64_t size,
 drm_private void
 amdgpu_vamgr_free_va(struct amdgpu_bo_va_mgr *mgr, uint64_t va, uint64_t size);
 
-int amdgpu_svm_vamgr_init(struct amdgpu_device *dev);
-void amdgpu_svm_vamgr_deinit(struct amdgpu_device *dev);
-
 drm_private int amdgpu_query_gpu_info_init(amdgpu_device_handle dev);
 
 drm_private uint64_t amdgpu_cs_calculate_timeout(uint64_t timeout);

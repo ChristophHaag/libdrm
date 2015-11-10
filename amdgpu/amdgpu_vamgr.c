@@ -317,7 +317,7 @@ int amdgpu_va_range_free(amdgpu_va_handle va_range_handle)
  *          <0 - Negative POSIX Error code
  *
  */
-int amdgpu_svm_vamgr_init(struct amdgpu_device *dev)
+int amdgpu_svm_init(amdgpu_device_handle dev)
 {
 	uint64_t start;
 	uint64_t end;
@@ -401,7 +401,7 @@ int amdgpu_svm_vamgr_init(struct amdgpu_device *dev)
 	return ret;
 }
 
-void amdgpu_svm_vamgr_deinit(struct amdgpu_device *dev)
+void amdgpu_svm_deinit(amdgpu_device_handle dev)
 {
 	if (atomic_dec_and_test(&vamgr_svm.refcount)) {
 		/* This is the last device referencing SVM. */

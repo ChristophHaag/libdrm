@@ -1240,6 +1240,27 @@ int amdgpu_bo_va_op(amdgpu_bo_handle bo,
 		    uint32_t ops);
 
 /**
+ * Reserve the virtual address range for SVM support
+ *
+ * \param amdgpu_device_handle
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_svm_init(amdgpu_device_handle dev);
+
+/**
+ * Free the virtual address range for SVM support
+ *
+ * \param amdgpu_device_handle
+ *
+ * \return
+ *
+*/
+void amdgpu_svm_deinit(amdgpu_device_handle dev);
+
+/**
  *  Commit SVM allocation in a process
  *
  * \param va_range_handle - \c [in] Handle of SVM allocation
