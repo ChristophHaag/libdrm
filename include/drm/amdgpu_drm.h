@@ -516,6 +516,8 @@ struct drm_amdgpu_cs_chunk_data {
 #define AMDGPU_INFO_VIRTUAL_RANGE		0x18
 /* gpu capability */
 #define AMDGPU_INFO_CAPABILITY			0x50
+	/* query pin memory capability */
+	#define AMDGPU_INFO_CAPABILITY_PIN_MEM	0x01
 
 #define AMDGPU_INFO_MMR_SE_INDEX_SHIFT	0
 #define AMDGPU_INFO_MMR_SE_INDEX_MASK	0xff
