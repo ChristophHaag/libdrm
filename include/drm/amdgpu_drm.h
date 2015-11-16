@@ -514,10 +514,11 @@ struct drm_amdgpu_cs_chunk_data {
 #define AMDGPU_INFO_VIS_VRAM_USAGE		0x17
 /* virtual range */
 #define AMDGPU_INFO_VIRTUAL_RANGE		0x18
+
 /* gpu capability */
 #define AMDGPU_INFO_CAPABILITY			0x50
-	/* query pin memory capability */
-	#define AMDGPU_INFO_CAPABILITY_PIN_MEM	0x01
+/* query pin memory capability */
+#define AMDGPU_CAPABILITY_PIN_MEM_FLAG  (1 << 0)
 
 #define AMDGPU_INFO_MMR_SE_INDEX_SHIFT	0
 #define AMDGPU_INFO_MMR_SE_INDEX_MASK	0xff
@@ -582,9 +583,6 @@ struct drm_amdgpu_info {
 			uint32_t _pad;
 		} virtual_range;
 
-		struct {
-			uint64_t type;
-		} query_capability;
 	};
 };
 
