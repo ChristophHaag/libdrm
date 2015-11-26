@@ -529,6 +529,43 @@ int amdgpu_bo_wait_for_idle(amdgpu_bo_handle bo,
 	}
 }
 
+int amdgpu_find_bo_by_cpu_mapping(amdgpu_device_handle dev,
+				  void *cpu,
+				  uint64_t size,
+				  amdgpu_bo_handle *buf_handle,
+				  uint64_t *offset_in_bo)
+{
+	int r;
+	struct amdgpu_bo *bo;
+	struct drm_amdgpu_gem_find_bo args;
+
+	args.addr = (uintptr_t)cpu;
+	args.size = size;
+	r = drmCommandWriteRead(dev->fd, DRM_AMDGPU_GEM_FIND_BO,
+				&args, sizeof(args));
+	if (r)
+		return r;
+	if (args.handle == 0)
+		return -EINVAL;
+	bo = util_hash_table_get(dev->bo_handles,
+				 (void*)(uintptr_t)args.handle);
+	if (!bo) {
+		bo = calloc(1, sizeof(struct amdgpu_bo));
+		if (!bo)
+			return -ENOMEM;
+		atomic_set(&bo->refcount, 1);
+		bo->dev = dev;
+		bo->alloc_size = size;
+		bo->handle = args.handle;
+	} else
+		atomic_inc(&bo->refcount);
+
+	*buf_handle = bo;
+	*offset_in_bo = args.offset;
+	return r;
+}
+
+
 int amdgpu_create_bo_from_user_mem(amdgpu_device_handle dev,
 				    void *cpu,
 				    uint64_t size,
