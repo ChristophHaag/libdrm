@@ -447,7 +447,8 @@ static int amdgpu_ioctl_wait_fences(struct amdgpu_cs_fence *fences,
 				    uint32_t fence_count,
 				    bool wait_all,
 				    uint64_t timeout_ns,
-				    uint32_t *status)
+				    uint32_t *status,
+				    uint32_t *first)
 {
 	struct drm_amdgpu_fence *drm_fences;
 	amdgpu_device_handle dev = fences[0].context->dev;
@@ -475,6 +476,10 @@ static int amdgpu_ioctl_wait_fences(struct amdgpu_cs_fence *fences,
 		return -errno;
 
 	*status = args.out.status;
+
+	if (first)
+		*first = args.out.first_signaled;
+
 	return 0;
 }
 
@@ -482,7 +487,8 @@ int amdgpu_cs_wait_fences(struct amdgpu_cs_fence *fences,
 			  uint32_t fence_count,
 			  bool wait_all,
 			  uint64_t timeout_ns,
-			  uint32_t *status)
+			  uint32_t *status,
+			  uint32_t *first)
 {
 	uint32_t ioctl_status = 0;
 	uint32_t i;
@@ -507,7 +513,7 @@ int amdgpu_cs_wait_fences(struct amdgpu_cs_fence *fences,
 	*status = 0;
 
 	r = amdgpu_ioctl_wait_fences(fences, fence_count, wait_all, timeout_ns,
-					&ioctl_status);
+					&ioctl_status, first);
 
 	if (!r)
 		*status = ioctl_status;

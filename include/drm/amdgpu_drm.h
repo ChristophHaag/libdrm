@@ -336,7 +336,8 @@ struct drm_amdgpu_wait_fences_in {
 };
 
 struct drm_amdgpu_wait_fences_out {
-	uint64_t status;
+	uint32_t status;
+	uint32_t first_signaled;
 };
 
 union drm_amdgpu_wait_fences {
