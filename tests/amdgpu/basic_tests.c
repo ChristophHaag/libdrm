@@ -1207,7 +1207,7 @@ static void amdgpu_command_submission_multi_fence_wait_all(bool wait_all)
 
 	r = amdgpu_cs_wait_fences(fence_status, ib_cs_num, wait_all,
 				AMDGPU_TIMEOUT_INFINITE,
-				&expired);
+				&expired, NULL);
 	CU_ASSERT_EQUAL(r, 0);
 
 	r = amdgpu_bo_unmap_and_free(ib_result_handle, va_handle,
