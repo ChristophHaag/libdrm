@@ -463,7 +463,7 @@ int amdgpu_bo_cpu_map(amdgpu_bo_handle bo, void **cpu)
 		pthread_mutex_unlock(&bo->cpu_access_mutex);
 		return -errno;
 	}
-
+	amdgpu_add_handle_to_table(bo);
 	bo->cpu_ptr = ptr;
 	bo->cpu_map_count = 1;
 	pthread_mutex_unlock(&bo->cpu_access_mutex);
