@@ -1226,6 +1226,57 @@ int amdgpu_va_range_alloc(amdgpu_device_handle dev,
 			   uint64_t flags);
 
 /**
+ * Allocate virtual address range in client defined range
+ *
+ * \param dev - [in] Device handle. See #amdgpu_device_initialize()
+ * \param va_range_type - \c [in] Type of MC va range from which to allocate
+ * \param size - \c [in] Size of range. Size must be correctly* aligned.
+ * It is client responsibility to correctly aligned size based on the future
+ * usage of allocated range.
+ * \param va_base_alignment - \c [in] Overwrite base address alignment
+ * requirement for GPU VM MC virtual
+ * address assignment. Must be multiple of size alignments received as
+ * 'amdgpu_buffer_size_alignments'.
+ * If 0 use the default one.
+ * \param va_base_required - \c [in] Specified required va base address.
+ * If 0 then library choose available one between [va_base_min, va_base_max].
+ * If !0 value will be passed and those value already "in use" then
+ * corresponding error status will be returned.
+ * \param va_base_min- \c [in] Specified required va range min address.
+ * valid if va_base_required is 0
+ * \param va_base_max - \c [in] Specified required va range max address.
+ * valid if va_base_required is 0
+ * \param va_base_allocated - \c [out] On return: Allocated VA base to be used
+ * by client.
+ * \param va_range_handle - \c [out] On return: Handle assigned to allocation
+ * \param flags - \c [in] flags for special VA range
+ *
+ * \return 0 on success\n
+ * >0 - AMD specific error code\n
+ * <0 - Negative POSIX Error code
+ *
+ * \notes \n
+ * It is client responsibility to correctly handle VA assignments and usage.
+ * Neither kernel driver nor libdrm_amdpgu are able to prevent and
+ * detect wrong va assignemnt.
+ *
+ * It is client responsibility to correctly handle multi-GPU cases and to pass
+ * the corresponding arrays of all devices handles where corresponding VA will
+ * be used.
+ *
+*/
+int amdgpu_va_range_alloc_in_range(amdgpu_device_handle dev,
+			  enum amdgpu_gpu_va_range va_range_type,
+			  uint64_t size,
+			  uint64_t va_base_alignment,
+			  uint64_t va_base_required,
+			  uint64_t va_range_min,
+			  uint64_t va_range_max,
+			  uint64_t *va_base_allocated,
+			  amdgpu_va_handle *va_range_handle,
+			  uint64_t flags);
+
+/**
  * Free previously allocated virtual address range
  *
  *
