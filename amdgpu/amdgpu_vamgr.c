@@ -192,10 +192,16 @@ static uint64_t amdgpu_vamgr_find_va_in_range(struct amdgpu_bo_va_mgr *mgr, uint
 			(hole->offset < range_min && range_min + size > hole->offset + hole->size) ||
 			hole->size < size)
 			continue;
-		offset = hole->offset;
+		/*
+		 * it is possible that the hole covers more than one range,
+		 * thus we need to respect the range_min
+		 */
+		offset = MAX2(hole->offset, range_min);
 		waste = offset % alignment;
 		waste = waste ? alignment - waste : 0;
 		offset += waste;
+		/* the gap between the range_min and hole->offset need to be covered as well */
+		waste += offset - hole->offset;
 		if (offset >= (hole->offset + hole->size)) {
 			continue;
 		}
