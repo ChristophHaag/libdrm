@@ -201,8 +201,12 @@ static uint64_t amdgpu_vamgr_find_va_in_range(struct amdgpu_bo_va_mgr *mgr, uint
 		waste = waste ? alignment - waste : 0;
 		offset += waste;
 		/* the gap between the range_min and hole->offset need to be covered as well */
-		waste += offset - hole->offset;
+		waste = offset - hole->offset;
 		if (offset >= (hole->offset + hole->size)) {
+			continue;
+		}
+
+		if (offset + size > range_max) {
 			continue;
 		}
 
