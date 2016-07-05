@@ -43,6 +43,7 @@
 #include "amdgpu_internal.h"
 #include "util_hash_table.h"
 #include "util_math.h"
+#include "xf86drmMode.h"
 
 static void amdgpu_close_kms_handle(amdgpu_device_handle dev,
 				     uint32_t handle)
@@ -415,6 +416,53 @@ int amdgpu_bo_import(amdgpu_device_handle dev,
 	output->buf_handle = bo;
 	output->alloc_size = bo->alloc_size;
 	return 0;
+}
+
+/* Get the first use crtc's frame buffer's buffer_id. */
+int amdgpu_get_fb_id(amdgpu_device_handle dev, unsigned int *fb_id)
+{
+	drmModeResPtr mode_res;
+	int count_crtcs;
+	drmModeCrtcPtr mode_crtc;
+	int current_id = 0;
+	drmModeFBPtr fbcur;
+	struct drm_amdgpu_gem_create_in bo_info = {};
+	struct drm_amdgpu_gem_op gem_op = {};
+	int r = 0;
+	int i;
+	struct amdgpu_bo *bo = NULL;
+	int flag_auth = 0;
+	int fd = dev->fd;
+
+	amdgpu_get_auth(dev->fd, &flag_auth);
+	if (flag_auth) {
+		fd = dev->fd;
+	} else {
+		amdgpu_get_auth(dev->flink_fd, &flag_auth);
+		if (flag_auth) {
+			fd = dev->flink_fd;
+		} else {
+			fprintf(stderr, "amdgpu: amdgpu_get_fb_id, couldn't get the auth fd\n");
+			return EINVAL;
+		}
+	}
+
+	mode_res = drmModeGetResources(fd);
+	if (!mode_res)
+		return EFAULT;
+
+	count_crtcs = mode_res->count_crtcs;
+	for (i = 0; i < mode_res->count_crtcs; i++) {
+		mode_crtc = drmModeGetCrtc(fd, mode_res->crtcs[i]);
+		if (mode_crtc->buffer_id) {
+			current_id = mode_crtc->buffer_id;
+			if (current_id != NULL)
+				break;
+		}
+	}
+	*fb_id = current_id;
+
+	return r;
 }
 
 int amdgpu_bo_free(amdgpu_bo_handle buf_handle)
