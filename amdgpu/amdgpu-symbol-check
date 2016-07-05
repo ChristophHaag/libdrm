@@ -50,6 +50,7 @@ amdgpu_va_range_alloc
 amdgpu_va_range_free
 amdgpu_va_range_query
 amdgpu_get_fb_id
+amdgpu_get_bo_from_fb_id
 EOF
 done)
 
