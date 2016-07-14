@@ -497,11 +497,15 @@ int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struc
 
 	fbcur = drmModeGetFB(fd, fb_id);
 
+	if (fbcur == NULL)
+		return EFAULT;
+
 	pthread_mutex_lock(&dev->bo_table_mutex);
 	if (fd != dev->fd) {
 		r = drmPrimeHandleToFD(fd, fbcur->handle, DRM_CLOEXEC, &dma_fd);
 		if (r) {
 			pthread_mutex_unlock(&dev->bo_table_mutex);
+			drmModeFreeFB(fbcur);
 			return r;
 		}
 		r = drmPrimeFDToHandle(dev->fd, dma_fd, &fbcur->handle );
@@ -510,6 +514,7 @@ int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struc
 
 		if (r) {
 			pthread_mutex_unlock(&dev->bo_table_mutex);
+			drmModeFreeFB(fbcur);
 			return r;
 		}
 	}
@@ -524,12 +529,14 @@ int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struc
 
 		output->buf_handle = bo;
 		output->alloc_size = bo->alloc_size;
+		drmModeFreeFB(fbcur);
 		return 0;
 	}
 
 	bo = calloc(1, sizeof(struct amdgpu_bo));
 	if (!bo) {
 		pthread_mutex_unlock(&dev->bo_table_mutex);
+		drmModeFreeFB(fbcur);
 		return -ENOMEM;
 	}
 
@@ -543,6 +550,7 @@ int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struc
 	if (r) {
 		free(bo);
 		pthread_mutex_unlock(&dev->bo_table_mutex);
+		drmModeFreeFB(fbcur);
 		return r;
 	}
 
@@ -558,6 +566,7 @@ int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struc
 	pthread_mutex_unlock(&dev->bo_table_mutex);
 
 	output->alloc_size = bo->alloc_size;
+	drmModeFreeFB(fbcur);
 	return r;
 }
 
