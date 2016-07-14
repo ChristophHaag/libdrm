@@ -454,13 +454,17 @@ int amdgpu_get_fb_id(amdgpu_device_handle dev, unsigned int *fb_id)
 	count_crtcs = mode_res->count_crtcs;
 	for (i = 0; i < mode_res->count_crtcs; i++) {
 		mode_crtc = drmModeGetCrtc(fd, mode_res->crtcs[i]);
-		if (mode_crtc->buffer_id) {
-			current_id = mode_crtc->buffer_id;
-			if (current_id != NULL)
+		if (mode_crtc) {
+			if (mode_crtc->buffer_id) {
+				current_id = mode_crtc->buffer_id;
+				drmModeFreeCrtc(mode_crtc);
 				break;
+			}
+			drmModeFreeCrtc(mode_crtc);
 		}
 	}
 	*fb_id = current_id;
+	drmModeFreeResources(mode_res);
 
 	return r;
 }
