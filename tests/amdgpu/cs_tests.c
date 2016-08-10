@@ -214,8 +214,10 @@ static void amdgpu_cs_uvd_create(void)
 	if (family_id >= AMDGPU_FAMILY_VI) {
 		((uint8_t*)msg)[0x10] = 7;
 		/* chip polaris 10/11 */
-		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A) {
+		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A
+				|| chip_id == chip_rev+0x64) {
 			/* dpb size */
+			printf("===> chip_rev = %d, chip_id = 0x%x\n", chip_rev, chip_id);
 			((uint8_t*)msg)[0x28] = 0x00;
 			((uint8_t*)msg)[0x29] = 0x94;
 			((uint8_t*)msg)[0x2A] = 0x6B;
@@ -292,7 +294,8 @@ static void amdgpu_cs_uvd_decode(void)
 		ptr[0x98] = 0x00;
 		ptr[0x99] = 0x02;
 		/* chip polaris10/11 */
-		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A) {
+		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A
+				|| chip_id == chip_rev+0x64) {
 			/*dpb size */
 			ptr[0x24] = 0x00;
 			ptr[0x25] = 0x94;
@@ -336,7 +339,8 @@ static void amdgpu_cs_uvd_decode(void)
 	dpb_addr = ALIGN(bs_addr + sizeof(uvd_bitstream), 4*1024);
 
 	if ((family_id >= AMDGPU_FAMILY_VI) &&
-		(chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A)) {
+		(chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A
+		 || chip_id == chip_rev+0x64)) {
 		ctx_addr = ALIGN(dpb_addr + 0x006B9400, 4*1024);
 	}
 
@@ -350,7 +354,8 @@ static void amdgpu_cs_uvd_decode(void)
 	uvd_cmd(bs_addr, 0x100, &i);
 	if (family_id >= AMDGPU_FAMILY_VI) {
 		uvd_cmd(it_addr, 0x204, &i);
-		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A)
+		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A ||
+				chip_id == chip_rev+0x64)
 			uvd_cmd(ctx_addr, 0x206, &i);
 }
 	ib_cpu[i++] = 0x3BC6;
