@@ -217,7 +217,6 @@ static void amdgpu_cs_uvd_create(void)
 		if (chip_id == chip_rev+0x50 || chip_id == chip_rev+0x5A
 				|| chip_id == chip_rev+0x64) {
 			/* dpb size */
-			printf("===> chip_rev = %d, chip_id = 0x%x\n", chip_rev, chip_id);
 			((uint8_t*)msg)[0x28] = 0x00;
 			((uint8_t*)msg)[0x29] = 0x94;
 			((uint8_t*)msg)[0x2A] = 0x6B;
