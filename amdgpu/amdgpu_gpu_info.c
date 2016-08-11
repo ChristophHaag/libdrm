@@ -48,10 +48,11 @@ int amdgpu_query_info(amdgpu_device_handle dev, unsigned info_id,
 			       sizeof(struct drm_amdgpu_info));
 }
 
-int amdgpu_query_capability(amdgpu_device_handle dev, uint64_t *value)
+int amdgpu_query_capability(amdgpu_device_handle dev,
+			     struct drm_amdgpu_capability *cap)
 {
 	return amdgpu_query_info(dev, AMDGPU_INFO_CAPABILITY,
-				  sizeof(uint64_t), value);
+				  sizeof(struct drm_amdgpu_capability), cap);
 }
 
 int amdgpu_query_crtc_from_id(amdgpu_device_handle dev, unsigned id,
