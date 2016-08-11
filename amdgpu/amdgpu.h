@@ -38,6 +38,7 @@
 #include <stdbool.h>
 
 struct drm_amdgpu_info_hw_ip;
+struct drm_amdgpu_capability;
 
 /*--------------------------------------------------------------------------*/
 /* --------------------------- Defines ------------------------------------ */
@@ -1155,7 +1156,8 @@ int amdgpu_query_info(amdgpu_device_handle dev, unsigned info_id,
  *          <0 - Negative POSIX error code
  *
 */
-int amdgpu_query_capability(amdgpu_device_handle dev, uint64_t *value);
+int amdgpu_query_capability(amdgpu_device_handle dev,
+			     struct drm_amdgpu_capability *cap);
 
 /**
  * Query information about GDS

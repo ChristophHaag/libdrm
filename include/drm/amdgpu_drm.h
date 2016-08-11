@@ -532,8 +532,6 @@ struct drm_amdgpu_cs_chunk_data {
 
 /* gpu capability */
 #define AMDGPU_INFO_CAPABILITY			0x50
-/* query pin memory capability */
-#define AMDGPU_CAPABILITY_PIN_MEM_FLAG  (1 << 0)
 
 #define AMDGPU_INFO_MMR_SE_INDEX_SHIFT	0
 #define AMDGPU_INFO_MMR_SE_INDEX_MASK	0xff
@@ -714,6 +712,16 @@ struct drm_amdgpu_info_hw_ip {
 struct drm_amdgpu_virtual_range {
 	uint64_t start;
 	uint64_t end;
+};
+
+/* query pin memory capability */
+#define AMDGPU_CAPABILITY_PIN_MEM_FLAG		(1 << 0)
+/* query direct gma capability */
+#define AMDGPU_CAPABILITY_DIRECT_GMA_FLAG	(1 << 1)
+
+struct drm_amdgpu_capability {
+	uint32_t flag;
+	uint32_t direct_gma_size;
 };
 
 /*
