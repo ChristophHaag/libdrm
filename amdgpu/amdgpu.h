@@ -38,6 +38,7 @@
 #include <stdbool.h>
 
 struct drm_amdgpu_info_hw_ip;
+struct drm_amdgpu_capability;
 
 /*--------------------------------------------------------------------------*/
 /* --------------------------- Defines ------------------------------------ */
@@ -61,6 +62,11 @@ struct drm_amdgpu_info_hw_ip;
  * is absolute.
  */
 #define AMDGPU_QUERY_FENCE_TIMEOUT_IS_ABSOLUTE     (1 << 0)
+
+/**
+ * Used in amdgpu_query_capability(), meaning if pin feature is enabled.
+ */
+#define AMDGPU_CAP_PIN_MEM  (1 << 0)
 
 /*--------------------------------------------------------------------------*/
 /* ----------------------------- Enums ------------------------------------ */
@@ -87,7 +93,9 @@ enum amdgpu_bo_handle_type {
 enum amdgpu_gpu_va_range
 {
 	/** Allocate from "normal"/general range */
-	amdgpu_gpu_va_range_general = 0
+	amdgpu_gpu_va_range_general = 0,
+	/** Allocate from svm range */
+	amdgpu_gpu_va_range_svm = 1
 };
 
 /*--------------------------------------------------------------------------*/
@@ -630,6 +638,38 @@ int amdgpu_bo_import(amdgpu_device_handle dev,
 		     struct amdgpu_bo_import_result *output);
 
 /**
+ * Allow others to get access to crtc's framebuffer
+ *
+ * \param   dev   - \c [in] Device handle.
+ *				   See #amdgpu_device_initialize()
+ * \param   fb_id - \c [out] the first crtc's framebuffer's buffer_id
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+ * \sa amdgpu_get_fb_id()
+ *
+*/
+int amdgpu_get_fb_id(amdgpu_device_handle dev, unsigned int *fb_id);
+
+/**
+ * Get the framebuffer's bo by fb_id
+ *
+ * \param   dev    - \c [in] Device handle.
+ *				    See #amdgpu_device_initialize()
+ * \param   fb_id  - \c [in] the framebuffer's buffer_id
+ *
+ * \param   output - \c [output] the bo of fb_id
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+ * \sa amdgpu_get_bo_from_fb_id()
+ *
+*/
+int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struct amdgpu_bo_import_result *output);
+
+/**
  * Request GPU access to user allocated memory e.g. via "malloc"
  *
  * \param dev - [in] Device handle. See #amdgpu_device_initialize()
@@ -665,6 +705,30 @@ int amdgpu_create_bo_from_user_mem(amdgpu_device_handle dev,
 				    amdgpu_bo_handle *buf_handle);
 
 /**
+ * Validate if the user memory comes from BO
+ *
+ * \param dev - [in] Device handle. See #amdgpu_device_initialize()
+ * \param cpu - [in] CPU address of user allocated memory which we
+ * want to map to GPU address space (make GPU accessible)
+ * (This address must be correctly aligned).
+ * \param size - [in] Size of allocation (must be correctly aligned)
+ * \param buf_handle - [out] Buffer handle for the userptr memory
+ * if the user memory is not from BO, the buf_handle will be NULL.
+ * \param offset_in_bo - [out] offset in this BO for this user memory
+ *
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_find_bo_by_cpu_mapping(amdgpu_device_handle dev,
+				  void *cpu,
+				  uint64_t size,
+				  amdgpu_bo_handle *buf_handle,
+				  uint64_t *offset_in_bo);
+
+
+/**
  * Free previosuly allocated memory
  *
  * \param   dev	       - \c [in] Device handle. See #amdgpu_device_initialize()
@@ -683,6 +747,19 @@ int amdgpu_create_bo_from_user_mem(amdgpu_device_handle dev,
  *
 */
 int amdgpu_bo_free(amdgpu_bo_handle buf_handle);
+
+/**
+ * Increase the reference count of a buffer object
+ *
+ * \param   bo - \c [in]  Buffer object handle to increase the reference count
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+ * \sa amdgpu_bo_alloc(), amdgpu_bo_free()
+ *
+*/
+int amdgpu_bo_inc_ref(amdgpu_bo_handle bo);
 
 /**
  * Request CPU access to GPU accessible memory
@@ -907,6 +984,29 @@ int amdgpu_cs_query_fence_status(struct amdgpu_cs_fence *fence,
 				 uint64_t flags,
 				 uint32_t *expired);
 
+/**
+ *  Wait for multiple fences
+ *
+ * \param   fences      - \c [in] The fence array to wait
+ * \param   fence_count - \c [in] The fence count
+ * \param   wait_all    - \c [in] If true, wait all fences to be signaled,
+ *                                otherwise, wait at least one fence
+ * \param   timeout_ns  - \c [in] The timeout to wait, in nanoseconds
+ * \param   status      - \c [out] '1' for signaled, '0' for timeout
+ * \param   first       - \c [out] the index of the first signaled fence from @fences
+ *
+ * \return  0 on success
+ *          <0 - Negative POSIX Error code
+ *
+ * \note    Currently it supports only one amdgpu_device. All fences come from
+ *          the same amdgpu_device with the same fd.
+*/
+int amdgpu_cs_wait_fences(struct amdgpu_cs_fence *fences,
+			  uint32_t fence_count,
+			  bool wait_all,
+			  uint64_t timeout_ns,
+			  uint32_t *status, uint32_t *first);
+
 /*
  * Query / Info API
  *
@@ -1046,6 +1146,20 @@ int amdgpu_query_info(amdgpu_device_handle dev, unsigned info_id,
 		      unsigned size, void *value);
 
 /**
+ * Query hardware or driver capabilities.
+ *
+ *
+ * \param   dev     - \c [in] Device handle. See #amdgpu_device_initialize()
+ * \param   value   - \c [out] Pointer to the return value.
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX error code
+ *
+*/
+int amdgpu_query_capability(amdgpu_device_handle dev,
+			     struct drm_amdgpu_capability *cap);
+
+/**
  * Query information about GDS
  *
  * \param   dev	     - \c [in] Device handle. See #amdgpu_device_initialize()
@@ -1057,6 +1171,36 @@ int amdgpu_query_info(amdgpu_device_handle dev, unsigned info_id,
 */
 int amdgpu_query_gds_info(amdgpu_device_handle dev,
 			struct amdgpu_gds_resource_info *gds_info);
+
+/**
+* Query private aperture range
+*
+* \param dev    - [in] Device handle. See #amdgpu_device_initialize()
+* \param start - \c [out] Start of private aperture
+* \param end    - \c [out] End of private aperture
+*
+* \return  0 on success\n
+*         <0 - Negative POSIX Error code
+*
+*/
+int amdgpu_query_private_aperture(amdgpu_device_handle dev,
+			uint64_t *start,
+			uint64_t *end);
+
+/**
+* Query shared aperture range
+*
+* \param dev    - [in] Device handle. See #amdgpu_device_initialize()
+* \param start - \c [out] Start of shared aperture
+* \param end    - \c [out] End of shared aperture
+*
+* \return 0 on success\n
+*    <0 - Negative POSIX Error code
+*
+*/
+int amdgpu_query_shared_aperture(amdgpu_device_handle dev,
+			uint64_t *start,
+			uint64_t *end);
 
 /**
  * Read a set of consecutive memory-mapped registers.
@@ -1130,6 +1274,57 @@ int amdgpu_va_range_alloc(amdgpu_device_handle dev,
 			   uint64_t flags);
 
 /**
+ * Allocate virtual address range in client defined range
+ *
+ * \param dev - [in] Device handle. See #amdgpu_device_initialize()
+ * \param va_range_type - \c [in] Type of MC va range from which to allocate
+ * \param size - \c [in] Size of range. Size must be correctly* aligned.
+ * It is client responsibility to correctly aligned size based on the future
+ * usage of allocated range.
+ * \param va_base_alignment - \c [in] Overwrite base address alignment
+ * requirement for GPU VM MC virtual
+ * address assignment. Must be multiple of size alignments received as
+ * 'amdgpu_buffer_size_alignments'.
+ * If 0 use the default one.
+ * \param va_base_required - \c [in] Specified required va base address.
+ * If 0 then library choose available one between [va_base_min, va_base_max].
+ * If !0 value will be passed and those value already "in use" then
+ * corresponding error status will be returned.
+ * \param va_base_min- \c [in] Specified required va range min address.
+ * valid if va_base_required is 0
+ * \param va_base_max - \c [in] Specified required va range max address.
+ * valid if va_base_required is 0
+ * \param va_base_allocated - \c [out] On return: Allocated VA base to be used
+ * by client.
+ * \param va_range_handle - \c [out] On return: Handle assigned to allocation
+ * \param flags - \c [in] flags for special VA range
+ *
+ * \return 0 on success\n
+ * >0 - AMD specific error code\n
+ * <0 - Negative POSIX Error code
+ *
+ * \notes \n
+ * It is client responsibility to correctly handle VA assignments and usage.
+ * Neither kernel driver nor libdrm_amdpgu are able to prevent and
+ * detect wrong va assignemnt.
+ *
+ * It is client responsibility to correctly handle multi-GPU cases and to pass
+ * the corresponding arrays of all devices handles where corresponding VA will
+ * be used.
+ *
+*/
+int amdgpu_va_range_alloc_in_range(amdgpu_device_handle dev,
+			  enum amdgpu_gpu_va_range va_range_type,
+			  uint64_t size,
+			  uint64_t va_base_alignment,
+			  uint64_t va_base_required,
+			  uint64_t va_range_min,
+			  uint64_t va_range_max,
+			  uint64_t *va_base_allocated,
+			  amdgpu_va_handle *va_range_handle,
+			  uint64_t flags);
+
+/**
  * Free previously allocated virtual address range
  *
  *
@@ -1184,6 +1379,51 @@ int amdgpu_bo_va_op(amdgpu_bo_handle bo,
 		    uint64_t addr,
 		    uint64_t flags,
 		    uint32_t ops);
+
+/**
+ * Reserve the virtual address range for SVM support
+ *
+ * \param amdgpu_device_handle
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_svm_init(amdgpu_device_handle dev);
+
+/**
+ * Free the virtual address range for SVM support
+ *
+ * \param amdgpu_device_handle
+ *
+ * \return
+ *
+*/
+void amdgpu_svm_deinit(amdgpu_device_handle dev);
+
+/**
+ *  Commit SVM allocation in a process
+ *
+ * \param va_range_handle - \c [in] Handle of SVM allocation
+ * \param cpu - \c [out] CPU pointer. The value is equal to GPU VM address.
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_svm_commit(amdgpu_va_handle va_range_handle,
+			void **cpu);
+
+/**
+ *  Uncommit SVM alloation in process's CPU_VM
+ *
+ * \param va_range_handle - \c [in] Handle of SVM allocation
+ *
+ * \return   0 on success\n
+ *          <0 - Negative POSIX Error code
+ *
+*/
+int amdgpu_svm_uncommit(amdgpu_va_handle va_range_handle);
 
 /**
  *  create semaphore

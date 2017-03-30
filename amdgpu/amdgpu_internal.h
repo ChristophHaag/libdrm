@@ -55,10 +55,15 @@ struct amdgpu_bo_va_hole {
 struct amdgpu_bo_va_mgr {
 	/* the start virtual address */
 	uint64_t va_offset;
+	uint64_t va_min;
 	uint64_t va_max;
 	struct list_head va_holes;
 	pthread_mutex_t bo_va_mutex;
 	uint32_t va_alignment;
+	/* reference count. It is used by SVM for mulit GPU.*/
+	atomic_t refcount;
+	/* Is the VM manager valid. It is used by SVM for mulit GPU.*/
+	bool valid;
 };
 
 struct amdgpu_va {
@@ -152,6 +157,20 @@ amdgpu_vamgr_free_va(struct amdgpu_bo_va_mgr *mgr, uint64_t va, uint64_t size);
 drm_private int amdgpu_query_gpu_info_init(amdgpu_device_handle dev);
 
 drm_private uint64_t amdgpu_cs_calculate_timeout(uint64_t timeout);
+
+/**
+* Get the authenticated form fd,
+*
+* \param   fd   - \c [in]  File descriptor for AMD GPU device
+* \param   auth - \c [out] Pointer to output the fd is authenticated or not
+*                          A render node fd, output auth = 0
+*                          A legacy fd, get the authenticated for compatibility root
+*
+* \return   0 on success\n
+*          >0 - AMD specific error code\n
+*          <0 - Negative POSIX Error code
+*/
+int amdgpu_get_auth(int fd, int *auth);
 
 /**
  * Inline functions.

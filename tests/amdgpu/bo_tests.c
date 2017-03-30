@@ -46,6 +46,8 @@ static amdgpu_va_handle va_handle;
 static void amdgpu_bo_export_import(void);
 static void amdgpu_bo_metadata(void);
 static void amdgpu_bo_map_unmap(void);
+static void amdgpu_get_fb_id_and_handle(void);
+
 
 CU_TestInfo bo_tests[] = {
 	{ "Export/Import",  amdgpu_bo_export_import },
@@ -53,6 +55,7 @@ CU_TestInfo bo_tests[] = {
 	{ "Metadata",  amdgpu_bo_metadata },
 #endif
 	{ "CPU map/unmap",  amdgpu_bo_map_unmap },
+	{ "GET FB_ID AND FB_HANDLE",  amdgpu_get_fb_id_and_handle },
 	CU_TEST_INFO_NULL,
 };
 
@@ -194,4 +197,19 @@ static void amdgpu_bo_map_unmap(void)
 
 	r = amdgpu_bo_cpu_unmap(buffer_handle);
 	CU_ASSERT_EQUAL(r, 0);
+}
+
+static void amdgpu_get_fb_id_and_handle(void)
+{
+	uint32_t *ptr;
+	int i, r;
+	unsigned int fb_id;
+	struct amdgpu_bo_import_result output;
+
+	r = amdgpu_get_fb_id(device_handle, &fb_id);
+	CU_ASSERT_EQUAL(r, 0);
+	CU_ASSERT_NOT_EQUAL(fb_id, 0);
+	r = amdgpu_get_bo_from_fb_id(device_handle, fb_id, &output);
+	CU_ASSERT_EQUAL(r, 0);
+	CU_ASSERT_NOT_EQUAL(output.buf_handle, 0);
 }

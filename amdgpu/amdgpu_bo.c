@@ -43,6 +43,7 @@
 #include "amdgpu_internal.h"
 #include "util_hash_table.h"
 #include "util_math.h"
+#include "xf86drmMode.h"
 
 static void amdgpu_close_kms_handle(amdgpu_device_handle dev,
 				     uint32_t handle)
@@ -417,10 +418,168 @@ int amdgpu_bo_import(amdgpu_device_handle dev,
 	return 0;
 }
 
+/* Get the first use crtc's frame buffer's buffer_id. */
+int amdgpu_get_fb_id(amdgpu_device_handle dev, unsigned int *fb_id)
+{
+	drmModeResPtr mode_res;
+	int count_crtcs;
+	drmModeCrtcPtr mode_crtc;
+	int current_id = 0;
+	drmModeFBPtr fbcur;
+	struct drm_amdgpu_gem_create_in bo_info = {};
+	struct drm_amdgpu_gem_op gem_op = {};
+	int r = 0;
+	int i;
+	struct amdgpu_bo *bo = NULL;
+	int flag_auth = 0;
+	int fd = dev->fd;
+
+	amdgpu_get_auth(dev->fd, &flag_auth);
+	if (flag_auth) {
+		fd = dev->fd;
+	} else {
+		amdgpu_get_auth(dev->flink_fd, &flag_auth);
+		if (flag_auth) {
+			fd = dev->flink_fd;
+		} else {
+			fprintf(stderr, "amdgpu: amdgpu_get_fb_id, couldn't get the auth fd\n");
+			return EINVAL;
+		}
+	}
+
+	mode_res = drmModeGetResources(fd);
+	if (!mode_res)
+		return EFAULT;
+
+	count_crtcs = mode_res->count_crtcs;
+	for (i = 0; i < mode_res->count_crtcs; i++) {
+		mode_crtc = drmModeGetCrtc(fd, mode_res->crtcs[i]);
+		if (mode_crtc) {
+			if (mode_crtc->buffer_id) {
+				current_id = mode_crtc->buffer_id;
+				drmModeFreeCrtc(mode_crtc);
+				break;
+			}
+			drmModeFreeCrtc(mode_crtc);
+		}
+	}
+	*fb_id = current_id;
+	drmModeFreeResources(mode_res);
+
+	return r;
+}
+
+/* Get the frame buffer's gem object handle by the fb_id. */
+int amdgpu_get_bo_from_fb_id(amdgpu_device_handle dev, unsigned int fb_id, struct amdgpu_bo_import_result *output)
+{
+	drmModeFBPtr fbcur;
+	struct drm_amdgpu_gem_create_in bo_info = {};
+	struct drm_amdgpu_gem_op gem_op = {};
+	int r = 0;
+	int i;
+	struct amdgpu_bo *bo = NULL;
+	int dma_fd;
+	int flag_auth = 0;
+	int fd = dev->fd;
+
+	amdgpu_get_auth(dev->fd, &flag_auth);
+	if (flag_auth) {
+		fd = dev->fd;
+	} else {
+		amdgpu_get_auth(dev->flink_fd, &flag_auth);
+		if (flag_auth) {
+			fd = dev->flink_fd;
+		} else {
+			fprintf(stderr, "amdgpu: amdgpu_get_bo_from_fb_id, couldn't get the auth fd\n");
+			return EINVAL;
+		}
+	}
+
+	fbcur = drmModeGetFB(fd, fb_id);
+
+	if (fbcur == NULL)
+		return EFAULT;
+
+	pthread_mutex_lock(&dev->bo_table_mutex);
+	if (fd != dev->fd) {
+		r = drmPrimeHandleToFD(fd, fbcur->handle, DRM_CLOEXEC, &dma_fd);
+		if (r) {
+			pthread_mutex_unlock(&dev->bo_table_mutex);
+			drmModeFreeFB(fbcur);
+			return r;
+		}
+		r = drmPrimeFDToHandle(dev->fd, dma_fd, &fbcur->handle );
+
+		close(dma_fd);
+
+		if (r) {
+			pthread_mutex_unlock(&dev->bo_table_mutex);
+			drmModeFreeFB(fbcur);
+			return r;
+		}
+	}
+	bo = util_hash_table_get(dev->bo_handles,
+				 (void*)(uintptr_t)fbcur->handle);
+
+	if (bo) {
+		pthread_mutex_unlock(&dev->bo_table_mutex);
+
+		/* The buffer already exists, just bump the refcount. */
+		atomic_inc(&bo->refcount);
+
+		output->buf_handle = bo;
+		output->alloc_size = bo->alloc_size;
+		drmModeFreeFB(fbcur);
+		return 0;
+	}
+
+	bo = calloc(1, sizeof(struct amdgpu_bo));
+	if (!bo) {
+		pthread_mutex_unlock(&dev->bo_table_mutex);
+		drmModeFreeFB(fbcur);
+		return -ENOMEM;
+	}
+
+	/* Query buffer info. */
+	gem_op.handle = fbcur->handle;
+	gem_op.op = AMDGPU_GEM_OP_GET_GEM_CREATE_INFO;
+	gem_op.value = (uintptr_t)&bo_info;
+
+	r = drmCommandWriteRead(dev->fd, DRM_AMDGPU_GEM_OP,
+				&gem_op, sizeof(gem_op));
+	if (r) {
+		free(bo);
+		pthread_mutex_unlock(&dev->bo_table_mutex);
+		drmModeFreeFB(fbcur);
+		return r;
+	}
+
+	/* Initialize it. */
+	atomic_set(&bo->refcount, 1);
+	bo->handle = fbcur->handle;
+	bo->dev = dev;
+	bo->alloc_size = bo_info.bo_size;
+	output->buf_handle = bo;
+	pthread_mutex_init(&bo->cpu_access_mutex, NULL);
+
+	util_hash_table_set(dev->bo_handles, (void*)(uintptr_t)bo->handle, bo);
+	pthread_mutex_unlock(&dev->bo_table_mutex);
+
+	output->alloc_size = bo->alloc_size;
+	drmModeFreeFB(fbcur);
+	return r;
+}
+
 int amdgpu_bo_free(amdgpu_bo_handle buf_handle)
 {
 	/* Just drop the reference. */
 	amdgpu_bo_reference(&buf_handle, NULL);
+	return 0;
+}
+
+int amdgpu_bo_inc_ref(amdgpu_bo_handle bo)
+{
+	atomic_inc(&bo->refcount);
 	return 0;
 }
 
@@ -463,7 +622,7 @@ int amdgpu_bo_cpu_map(amdgpu_bo_handle bo, void **cpu)
 		pthread_mutex_unlock(&bo->cpu_access_mutex);
 		return -errno;
 	}
-
+	amdgpu_add_handle_to_table(bo);
 	bo->cpu_ptr = ptr;
 	bo->cpu_map_count = 1;
 	pthread_mutex_unlock(&bo->cpu_access_mutex);
@@ -528,6 +687,43 @@ int amdgpu_bo_wait_for_idle(amdgpu_bo_handle bo,
 		return r;
 	}
 }
+
+int amdgpu_find_bo_by_cpu_mapping(amdgpu_device_handle dev,
+				  void *cpu,
+				  uint64_t size,
+				  amdgpu_bo_handle *buf_handle,
+				  uint64_t *offset_in_bo)
+{
+	int r;
+	struct amdgpu_bo *bo;
+	struct drm_amdgpu_gem_find_bo args;
+
+	args.addr = (uintptr_t)cpu;
+	args.size = size;
+	r = drmCommandWriteRead(dev->fd, DRM_AMDGPU_GEM_FIND_BO,
+				&args, sizeof(args));
+	if (r)
+		return r;
+	if (args.handle == 0)
+		return -EINVAL;
+	bo = util_hash_table_get(dev->bo_handles,
+				 (void*)(uintptr_t)args.handle);
+	if (!bo) {
+		bo = calloc(1, sizeof(struct amdgpu_bo));
+		if (!bo)
+			return -ENOMEM;
+		atomic_set(&bo->refcount, 1);
+		bo->dev = dev;
+		bo->alloc_size = size;
+		bo->handle = args.handle;
+	} else
+		atomic_inc(&bo->refcount);
+
+	*buf_handle = bo;
+	*offset_in_bo = args.offset;
+	return r;
+}
+
 
 int amdgpu_create_bo_from_user_mem(amdgpu_device_handle dev,
 				    void *cpu,

@@ -51,6 +51,8 @@ extern "C" {
 #define DRM_AMDGPU_GEM_OP		0x10
 #define DRM_AMDGPU_GEM_USERPTR		0x11
 #define DRM_AMDGPU_WAIT_FENCES		0x12
+#define DRM_AMDGPU_GEM_FIND_BO          0x13
+#define DRM_AMDGPU_FREESYNC		0x14
 
 #define DRM_IOCTL_AMDGPU_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_GEM_CREATE, union drm_amdgpu_gem_create)
 #define DRM_IOCTL_AMDGPU_GEM_MMAP	DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_GEM_MMAP, union drm_amdgpu_gem_mmap)
@@ -65,6 +67,8 @@ extern "C" {
 #define DRM_IOCTL_AMDGPU_GEM_OP		DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_GEM_OP, struct drm_amdgpu_gem_op)
 #define DRM_IOCTL_AMDGPU_GEM_USERPTR	DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_GEM_USERPTR, struct drm_amdgpu_gem_userptr)
 #define DRM_IOCTL_AMDGPU_WAIT_FENCES	DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_WAIT_FENCES, union drm_amdgpu_wait_fences)
+#define DRM_IOCTL_AMDGPU_GEM_FIND_BO      DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_GEM_FIND_BO, struct drm_amdgpu_gem_find_bo)
+#define DRM_IOCTL_AMDGPU_FREESYNC	DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_FREESYNC, struct drm_amdgpu_freesync)
 
 #define AMDGPU_GEM_DOMAIN_CPU		0x1
 #define AMDGPU_GEM_DOMAIN_GTT		0x2
@@ -85,6 +89,8 @@ extern "C" {
 #define AMDGPU_GEM_CREATE_SHADOW		(1 << 4)
 /* Flag that allocating the BO should use linear VRAM */
 #define AMDGPU_GEM_CREATE_VRAM_CONTIGUOUS	(1 << 5)
+/* Flag that the memory allocation should be pinned */
+#define AMDGPU_GEM_CREATE_NO_EVICT              (1 << 6)
 
 struct drm_amdgpu_gem_create_in  {
 	/** the requested memory size */
@@ -209,7 +215,16 @@ struct drm_amdgpu_gem_userptr {
 	__u32		handle;
 };
 
-/* SI-CI-VI: */
+struct drm_amdgpu_gem_find_bo {
+       uint64_t                addr;
+       uint64_t                size;
+       uint32_t                flags;
+       /* Resulting GEM handle */
+       uint32_t                handle;
+       /* offset in bo */
+       uint64_t                offset;
+};
+
 /* same meaning as the GB_TILE_MODE and GL_MACRO_TILE_MODE fields */
 #define AMDGPU_TILING_ARRAY_MODE_SHIFT			0
 #define AMDGPU_TILING_ARRAY_MODE_MASK			0xf
@@ -527,6 +542,11 @@ struct drm_amdgpu_cs_chunk_data {
 /* Query memory about VRAM and GTT domains */
 #define AMDGPU_INFO_MEMORY			0x19
 /* Query vce clock table */
+/* virtual range */
+#define AMDGPU_INFO_VIRTUAL_RANGE		0x1F
+
+/* gpu capability */
+#define AMDGPU_INFO_CAPABILITY			0x50
 #define AMDGPU_INFO_VCE_CLOCK_TABLE		0x1A
 /* Query vbios related information */
 #define AMDGPU_INFO_VBIOS			0x1B
@@ -599,6 +619,12 @@ struct drm_amdgpu_info {
 			__u32 type;
 			__u32 offset;
 		} vbios_info;
+
+		struct {
+			uint32_t aperture;
+			uint32_t _pad;
+		} virtual_range;
+
 	};
 };
 
@@ -762,6 +788,38 @@ struct drm_amdgpu_info_vce_clock_table {
 #define AMDGPU_FAMILY_VI			130 /* Iceland, Tonga */
 #define AMDGPU_FAMILY_CZ			135 /* Carrizo, Stoney */
 #define AMDGPU_FAMILY_AI			141 /* Vega10 */
+/**
+ *  Definition of System Unified Address (SUA) apertures
+ */
+#define AMDGPU_SUA_APERTURE_PRIVATE	1
+#define AMDGPU_SUA_APERTURE_SHARED	2
+struct drm_amdgpu_virtual_range {
+	uint64_t start;
+	uint64_t end;
+};
+
+/* query pin memory capability */
+#define AMDGPU_CAPABILITY_PIN_MEM_FLAG		(1 << 0)
+/* query direct gma capability */
+#define AMDGPU_CAPABILITY_DIRECT_GMA_FLAG	(1 << 1)
+
+struct drm_amdgpu_capability {
+	uint32_t flag;
+	uint32_t direct_gma_size;
+};
+
+/*
+ * Definition of free sync enter and exit signals
+ * We may have more options in the future
+ */
+#define AMDGPU_FREESYNC_FULLSCREEN_ENTER		1
+#define AMDGPU_FREESYNC_FULLSCREEN_EXIT  		2
+
+struct drm_amdgpu_freesync {
+        __u32 op;			/* AMDGPU_FREESYNC_FULLSCREEN_ENTER or */
+					/* AMDGPU_FREESYNC_FULLSCREEN_ENTER */
+        __u32 spare[7];
+};
 
 #if defined(__cplusplus)
 }
